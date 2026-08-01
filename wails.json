@@ -1,0 +1,12 @@
+{
+  "name": "rdpman",
+  "outputfilename": "rdpman.exe",
+  "frontend:install": "",
+  "frontend:build": "",
+  "frontend:dev:watcher": "",
+  "frontend:dev:serverUrl": "",
+  "author": {
+    "name": "danieldamazio",
+    "email": "daniel.damazio@icloud.com"
+  }
+}

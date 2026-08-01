@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>rdpman</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+
+        /* Tipografia nativa e reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Inter", -apple-system, sans-serif;
+            user-select: none;
+        }
+
+        body {
+            background-color: #1C1C1E;
+            color: #FFFFFF;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Barra superior */
+        .title-bar {
+            height: 38px;
+            background-color: #1C1C1E;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding: 0 16px;
+            --wails-draggable: drag;
+            position: relative;
+            z-index: 30;
+        }
+
+        .title {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 13px;
+            font-weight: 600;
+            color: #8E8E93;
+            letter-spacing: 0.5px;
+            pointer-events: none;
+        }
+
+        .window-controls {
+            display: flex;
+            gap: 8px;
+            --wails-draggable: no-drag;
+        }
+
+        .btn-win {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            transition: opacity 0.2s;
+        }
+        .btn-win:hover { opacity: 0.7; }
+        .btn-min { background-color: #FFB340; }
+        .btn-close { background-color: #FF453A; }
+
+        .search-container {
+            padding: 12px 16px;
+            --wails-draggable: no-drag;
+        }
+
+        .search-input {
+            width: 100%;
+            background-color: #2C2C2E;
+            border: 1px solid #3A3A3C;
+            border-radius: 10px;
+            padding: 10px 14px;
+            color: #FFFFFF;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+            user-select: auto;
+        }
+        .search-input:focus { border-color: #004a77; }
+
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 16px 80px 16px;
+            --wails-draggable: no-drag;
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #3A3A3C; border-radius: 4px; }
+
+        /* Cards */
+        .card {
+            background-color: #2C2C2E;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: transform 0.1s, background-color 0.2s;
+        }
+        .card:hover { background-color: #323234; }
+
+        .card-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .c-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #FFFFFF;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .c-sub { font-size: 12px; color: #8E8E93; }
+
+        .btn-connect {
+            background-color: #004a77;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-left: 12px;
+            transition: background-color 0.2s;
+        }
+        .btn-connect:hover { background-color: #005a91; }
+
+        .card-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-left: 8px;
+        }
+        .icon-action {
+            cursor: pointer;
+            fill: #8E8E93;
+            width: 16px; height: 16px;
+            transition: fill 0.2s;
+        }
+        .icon-action:hover { fill: #FFFFFF; }
+        .icon-action.del:hover { fill: #FF453A; }
+
+        /* Container de FABs */
+        .fab-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            display: flex;
+            gap: 12px;
+            z-index: 10;
+            --wails-draggable: no-drag;
+        }
+
+        .fab {
+            width: 56px;
+            height: 56px;
+            border-radius: 28px;
+            background-color: #004a77;
+            color: #FFFFFF;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            border: none;
+            transition: transform 0.2s, background-color 0.2s;
+        }
+        .fab:hover {
+            background-color: #005a91;
+            transform: scale(1.05);
+        }
+
+        .fab-secondary {
+            background-color: #2C2C2E;
+            color: #8E8E93;
+        }
+        .fab-secondary:hover {
+            background-color: #3A3A3C;
+            color: #FFFFFF;
+        }
+
+        /* Modal CRUD */
+        .modal-overlay {
+            position: fixed;
+            top: 38px;
+            left: 0; right: 0; bottom: 0;
+            background-color: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            --wails-draggable: no-drag;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-card {
+            background-color: #1C1C1E;
+            width: 85%;
+            border-radius: 16px;
+            border: 1px solid #2C2C2E;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            transform: scale(0.95) translateY(10px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .modal-overlay.active .modal-card {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            border-bottom: 1px solid #2C2C2E;
+        }
+        .modal-title { font-size: 16px; font-weight: 600; flex: 1; text-align: center;}
+        
+        .modal-body {
+            padding: 24px 16px;
+            flex: 1;
+        }
+
+        .input-group { margin-bottom: 16px; }
+        .input-group label {
+            display: block;
+            font-size: 12px;
+            color: #8E8E93;
+            margin-bottom: 6px;
+            margin-left: 4px;
+        }
+        
+        .input-group input, .input-style {
+            width: 100%;
+            background-color: #2C2C2E;
+            border: 1px solid transparent;
+            border-radius: 10px;
+            padding: 12px 14px;
+            color: #FFFFFF;
+            font-size: 14px;
+            outline: none;
+            user-select: auto;
+        }
+        .input-group input:focus, .input-style:focus { border-color: #004a77; }
+
+        select.input-style {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238E8E93' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            background-size: 16px;
+        }
+        select.input-style option {
+            background-color: #2C2C2E;
+            color: #FFFFFF;
+        }
+
+        .dpapi-notice {
+            font-size: 11px;
+            color: #8E8E93;
+            text-align: center;
+            margin-top: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .modal-footer {
+            padding: 16px;
+            display: flex;
+            gap: 12px;
+            border-top: 1px solid #2C2C2E;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+        }
+        .btn-cancel {
+            background-color: transparent;
+            color: #8E8E93;
+        }
+        .btn-cancel:hover { background-color: #2C2C2E; }
+        
+        .btn-save {
+            background-color: #004a77;
+            color: #FFFFFF;
+        }
+        .btn-save:hover { background-color: #005a91; }
+
+    </style>
+</head>
+<body>
+
+    <!-- Top Bar -->
+    <div class="title-bar">
+        <div class="title">rdpman</div>
+        <div class="window-controls">
+            <button class="btn-win btn-min" onclick="window.runtime.WindowMinimise()"></button>
+            <button class="btn-win btn-close" onclick="window.runtime.Quit()"></button>
+        </div>
+    </div>
+
+    <!-- Main View -->
+    <div class="search-container">
+        <input type="text" class="search-input" id="searchInput" placeholder="Buscar conexões...">
+    </div>
+
+    <div class="content" id="listContainer">
+        <!-- Cards serão injetados via JS -->
+    </div>
+
+    <!-- Botões Flutuantes -->
+    <div class="fab-container">
+        <!-- Usuário Padrão -->
+        <button class="fab fab-secondary" onclick="openUserModal()" title="Gerenciar Usuários Padrões">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        </button>
+        <!-- Nova Conexão -->
+        <button class="fab" onclick="openModal()" title="Nova Conexão">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        </button>
+    </div>
+
+    <!-- MODAL: Conexões -->
+    <div class="modal-overlay" id="modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <span class="modal-title" id="modalTitle">Nova Conexão</span>
+            </div>
+            <div class="modal-body" style="max-height: 480px; overflow-y: auto;">
+                <input type="hidden" id="editId" value="0">
+                <div class="input-group">
+                    <label>Nome da Conexão</label>
+                    <input type="text" id="inpName" placeholder="Ex: Servidor AD Matrix" autocomplete="off">
+                </div>
+                <div class="input-group">
+                    <label>IP ou Hostname</label>
+                    <input type="text" id="inpHost" placeholder="10.0.0.1 ou srv-ad.local" autocomplete="off">
+                </div>
+
+                <!-- Novo Select para Usuários Padrões -->
+                <div class="input-group" id="groupSelDefaultUser">
+                    <label>Preencher com Usuário Padrão (Opcional)</label>
+                    <select id="selDefaultUser" class="input-style" onchange="applyDefaultUser()">
+                        <option value="">Não usar padrão...</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label>Usuário</label>
+                    <input type="text" id="inpUser" placeholder="admin ou DOMINIO\user" autocomplete="off">
+                </div>
+                
+                <div class="input-group" id="groupPassToggle" style="display: none; flex-direction: row; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="chkUpdatePass" onchange="togglePasswordInput()" style="width: auto; cursor: pointer;">
+                    <label for="chkUpdatePass" style="margin: 0; font-size: 14px; color: #FFFFFF; cursor: pointer;">Alterar Senha</label>
+                </div>
+
+                <div class="input-group" id="groupPass">
+                    <label>Senha</label>
+                    <input type="password" id="inpPass" placeholder="Digite a senha" autocomplete="new-password">
+                </div>
+                <div class="dpapi-notice">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="#8E8E93"><path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7c0-2.757-2.243-5-5-5zm-3 5c0-1.654 1.346-3 3-3s3 1.346 3 3v3H9V7zm3 11a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/></svg>
+                    Protegido localmente via DPAPI
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-cancel" onclick="closeModal()">Cancelar</button>
+                <button class="btn btn-save" onclick="saveConnection()">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Gerenciador de Usuários Padrões -->
+    <div class="modal-overlay" id="modalUser">
+        <div class="modal-card">
+            <div class="modal-header">
+                <span class="modal-title">Usuários Padrões</span>
+            </div>
+            <div class="modal-body" style="max-height: 480px; overflow-y: auto;">
+                
+                <!-- Formulário de Criação/Edição no topo -->
+                <div style="margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #2C2C2E;">
+                    <span style="font-size: 14px; font-weight: 600; display: block; margin-bottom: 12px; color: #FFFFFF;" id="uFormTitle">Novo Usuário Padrão</span>
+                    
+                    <input type="hidden" id="uEditId" value="0">
+                    <div class="input-group">
+                        <label>Nome Identificador</label>
+                        <input type="text" id="uInpName" placeholder="Ex: Credencial Admin TI" autocomplete="off">
+                    </div>
+                    <div class="input-group">
+                        <label>Usuário</label>
+                        <input type="text" id="uInpUser" placeholder="admin ou DOMINIO\user" autocomplete="off">
+                    </div>
+                    <div class="input-group" id="uGroupPassToggle" style="display: none; flex-direction: row; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="uChkUpdatePass" onchange="uTogglePasswordInput()" style="width: auto; cursor: pointer;">
+                        <label for="uChkUpdatePass" style="margin: 0; font-size: 14px; color: #FFFFFF; cursor: pointer;">Alterar Senha</label>
+                    </div>
+                    <div class="input-group" id="uGroupPass">
+                        <label>Senha</label>
+                        <input type="password" id="uInpPass" placeholder="Digite a senha" autocomplete="new-password">
+                    </div>
+                    <div style="display: flex; gap: 8px; margin-top: 12px;">
+                        <button class="btn btn-cancel" onclick="resetUserForm()" style="padding: 8px; font-size: 12px;">Limpar</button>
+                        <button class="btn btn-save" onclick="saveDefaultUser()" style="padding: 8px; font-size: 12px;">Salvar Usuário</button>
+                    </div>
+                </div>
+
+                <!-- Lista de Usuários Padrões na parte de baixo -->
+                <div>
+                    <span style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 12px; color: #8E8E93;">Usuários Padrões Cadastrados</span>
+                    <div id="defaultUsersList"></div>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-cancel" onclick="closeUserModal()">Fechar Janela</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allConnections = [];
+        let defaultUsers = [];
+
+        window.onload = () => {
+            loadData();
+            loadDefaultUsers();
+        };
+
+        function el(tag, className, textContent) {
+            const e = document.createElement(tag);
+            if (className) e.className = className;
+            if (textContent) e.textContent = textContent;
+            return e;
+        }
+
+        // ==========================================
+        // LÓGICA DE CONEXÕES
+        // ==========================================
+
+        async function loadData() {
+            try {
+                allConnections = await window.go.main.App.GetConnections();
+                renderList(allConnections);
+            } catch (err) { console.error("Erro", err); }
+        }
+
+        function renderList(connections) {
+            const container = document.getElementById('listContainer');
+            container.innerHTML = ''; 
+
+            if (!connections || connections.length === 0) {
+                container.appendChild(el('div', 'c-sub', 'Nenhuma conexão cadastrada.'));
+                container.lastChild.style.textAlign = 'center';
+                container.lastChild.style.marginTop = '20px';
+                return;
+            }
+
+            connections.forEach(conn => {
+                const card = el('div', 'card');
+                const info = el('div', 'card-info');
+                info.appendChild(el('div', 'c-name', conn.name));
+                info.appendChild(el('div', 'c-sub', `${conn.host} • ${conn.username}`));
+
+                const actions = el('div', 'card-actions');
+                
+                const btnEdit = document.createElement('div');
+                btnEdit.innerHTML = `<svg class="icon-action" viewBox="0 0 24 24"><path d="M19.045 7.401c.378-.378.586-.88.586-1.414s-.208-1.036-.586-1.414l-1.586-1.586c-.378-.378-.88-.586-1.414-.586s-1.036.208-1.414.586l-1.5 1.5-4 4-2.5 2.5v3.172h3.172l2.5-2.5 4-4 1.5-1.5zm-8.873 4.171l4-4 1.586 1.586-4 4-1.586-1.586zm-5.172 3.172v1.5h1.5l2.5-2.5-1.5-1.5-2.5 2.5z"/></svg>`;
+                btnEdit.onclick = () => openModal(conn);
+                
+                const btnDel = document.createElement('div');
+                btnDel.innerHTML = `<svg class="icon-action del" viewBox="0 0 24 24"><path d="M6 7H5v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7H6zm10.618-3L15 2H9L7.382 4H3v2h18V4z"/></svg>`;
+                btnDel.onclick = async () => {
+                    await window.go.main.App.DeleteConnection(conn.id);
+                    loadData();
+                };
+
+                actions.appendChild(btnEdit);
+                actions.appendChild(btnDel);
+
+                const btnConn = el('button', 'btn-connect', 'Conectar');
+                btnConn.onclick = () => window.go.main.App.Connect(conn.id);
+
+                const rightWrapper = el('div', '');
+                rightWrapper.style.display = 'flex';
+                rightWrapper.style.alignItems = 'center';
+                
+                rightWrapper.appendChild(actions);
+                rightWrapper.appendChild(btnConn);
+
+                card.appendChild(info);
+                card.appendChild(rightWrapper);
+                container.appendChild(card);
+            });
+        }
+
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const val = e.target.value.toLowerCase();
+            const filtered = allConnections.filter(c => 
+                c.name.toLowerCase().includes(val) || c.host.toLowerCase().includes(val)
+            );
+            renderList(filtered);
+        });
+
+        function openModal(conn = null) {
+            const modal = document.getElementById('modal');
+            const title = document.getElementById('modalTitle');
+            
+            document.getElementById('selDefaultUser').value = ""; // Reseta o select
+
+            if (conn) {
+                title.textContent = "Editar Conexão";
+                document.getElementById('editId').value = conn.id;
+                document.getElementById('inpName').value = conn.name;
+                document.getElementById('inpHost').value = conn.host;
+                document.getElementById('inpUser').value = conn.username;
+                
+                document.getElementById('groupPassToggle').style.display = 'flex';
+                document.getElementById('chkUpdatePass').checked = false;
+                document.getElementById('groupPass').style.display = 'none';
+                document.getElementById('inpPass').value = "";
+                document.getElementById('groupSelDefaultUser').style.display = 'none'; // Esconde na edição
+            } else {
+                title.textContent = "Nova Conexão";
+                document.getElementById('editId').value = 0;
+                document.getElementById('inpName').value = '';
+                document.getElementById('inpHost').value = '';
+                document.getElementById('inpUser').value = '';
+                
+                document.getElementById('groupPassToggle').style.display = 'none';
+                document.getElementById('chkUpdatePass').checked = true;
+                document.getElementById('groupPass').style.display = 'block';
+                document.getElementById('inpPass').value = '';
+                document.getElementById('groupSelDefaultUser').style.display = 'block'; // Mostra na criação
+            }
+            modal.classList.add('active');
+            document.getElementById('inpName').focus();
+        }
+
+        function togglePasswordInput() {
+            const isChecked = document.getElementById('chkUpdatePass').checked;
+            document.getElementById('groupPass').style.display = isChecked ? 'block' : 'none';
+            if (!isChecked) document.getElementById('inpPass').value = '';
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+        }
+
+        async function saveConnection() {
+            const id = parseInt(document.getElementById('editId').value);
+            const name = document.getElementById('inpName').value.trim();
+            const host = document.getElementById('inpHost').value.trim();
+            const user = document.getElementById('inpUser').value.trim();
+            const pass = document.getElementById('inpPass').value;
+            const updatePass = document.getElementById('chkUpdatePass').checked || id === 0;
+
+            if (!name || !host || !user) return; 
+
+            const connData = { id: id, name: name, host: host, username: user, password: "" };
+
+            await window.go.main.App.SaveConnection(connData, pass, updatePass);
+            closeModal();
+            loadData();
+        }
+
+        function applyDefaultUser() {
+            const id = document.getElementById('selDefaultUser').value;
+            if (id) {
+                const du = defaultUsers.find(u => u.id == parseInt(id));
+                if (du) {
+                    document.getElementById('inpUser').value = du.username;
+                    document.getElementById('inpPass').value = du.password; // A senha foi descriptografada no backend
+                    document.getElementById('chkUpdatePass').checked = true;
+                    document.getElementById('groupPass').style.display = 'block';
+                }
+            }
+        }
+
+        // ==========================================
+        // LÓGICA DE USUÁRIOS PADRÕES
+        // ==========================================
+
+        async function loadDefaultUsers() {
+            try {
+                defaultUsers = await window.go.main.App.GetDefaultUsers();
+                renderDefaultUsersList();
+                updateSelectOptions();
+            } catch(err) { console.error(err); }
+        }
+
+        function renderDefaultUsersList() {
+            const container = document.getElementById('defaultUsersList');
+            container.innerHTML = '';
+            
+            if (!defaultUsers || defaultUsers.length === 0) {
+                container.innerHTML = '<div class="c-sub" style="text-align: center; margin-bottom: 16px;">Nenhum usuário cadastrado.</div>';
+                return;
+            }
+
+            defaultUsers.forEach(du => {
+                const row = el('div', 'card');
+                row.style.marginBottom = '8px';
+                row.style.padding = '12px';
+
+                const info = el('div', 'card-info');
+                info.appendChild(el('div', 'c-name', du.name));
+                info.appendChild(el('div', 'c-sub', du.username));
+
+                const actions = el('div', 'card-actions');
+                actions.style.flexDirection = 'row';
+
+                const btnEdit = document.createElement('div');
+                btnEdit.innerHTML = `<svg class="icon-action" viewBox="0 0 24 24"><path d="M19.045 7.401c.378-.378.586-.88.586-1.414s-.208-1.036-.586-1.414l-1.586-1.586c-.378-.378-.88-.586-1.414-.586s-1.036.208-1.414.586l-1.5 1.5-4 4-2.5 2.5v3.172h3.172l2.5-2.5 4-4 1.5-1.5zm-8.873 4.171l4-4 1.586 1.586-4 4-1.586-1.586zm-5.172 3.172v1.5h1.5l2.5-2.5-1.5-1.5-2.5 2.5z"/></svg>`;
+                btnEdit.onclick = () => editDefaultUser(du);
+
+                const btnDel = document.createElement('div');
+                btnDel.innerHTML = `<svg class="icon-action del" viewBox="0 0 24 24"><path d="M6 7H5v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7H6zm10.618-3L15 2H9L7.382 4H3v2h18V4z"/></svg>`;
+                btnDel.onclick = async () => {
+                    await window.go.main.App.DeleteDefaultUser(du.id);
+                    loadDefaultUsers();
+                };
+
+                actions.appendChild(btnEdit);
+                actions.appendChild(btnDel);
+
+                row.appendChild(info);
+                row.appendChild(actions);
+                container.appendChild(row);
+            });
+        }
+
+        function updateSelectOptions() {
+            const sel = document.getElementById('selDefaultUser');
+            sel.innerHTML = '<option value="">Não usar padrão...</option>';
+            if (defaultUsers) {
+                defaultUsers.forEach(du => {
+                    const opt = document.createElement('option');
+                    opt.value = du.id;
+                    opt.textContent = du.name;
+                    sel.appendChild(opt);
+                });
+            }
+        }
+
+        function openUserModal() {
+            resetUserForm();
+            document.getElementById('modalUser').classList.add('active');
+        }
+
+        function closeUserModal() {
+            document.getElementById('modalUser').classList.remove('active');
+        }
+
+        function resetUserForm() {
+            document.getElementById('uFormTitle').textContent = "Novo Usuário Padrão";
+            document.getElementById('uEditId').value = 0;
+            document.getElementById('uInpName').value = '';
+            document.getElementById('uInpUser').value = '';
+            document.getElementById('uInpPass').value = '';
+            
+            document.getElementById('uGroupPassToggle').style.display = 'none';
+            document.getElementById('uChkUpdatePass').checked = true;
+            document.getElementById('uGroupPass').style.display = 'block';
+            
+            document.getElementById('uInpName').focus();
+        }
+
+        function editDefaultUser(du) {
+            document.getElementById('uFormTitle').textContent = "Editando: " + du.name;
+            document.getElementById('uEditId').value = du.id;
+            document.getElementById('uInpName').value = du.name;
+            document.getElementById('uInpUser').value = du.username;
+            
+            document.getElementById('uGroupPassToggle').style.display = 'flex';
+            document.getElementById('uChkUpdatePass').checked = false;
+            document.getElementById('uGroupPass').style.display = 'none';
+            document.getElementById('uInpPass').value = "";
+        }
+
+        function uTogglePasswordInput() {
+            const isChecked = document.getElementById('uChkUpdatePass').checked;
+            document.getElementById('uGroupPass').style.display = isChecked ? 'block' : 'none';
+            if (!isChecked) document.getElementById('uInpPass').value = '';
+        }
+
+        async function saveDefaultUser() {
+            const id = parseInt(document.getElementById('uEditId').value);
+            const name = document.getElementById('uInpName').value.trim();
+            const user = document.getElementById('uInpUser').value.trim();
+            const pass = document.getElementById('uInpPass').value;
+            const updatePass = document.getElementById('uChkUpdatePass').checked || id === 0;
+
+            if (!name || !user) return; 
+
+            const userData = { id: id, name: name, username: user, password: "" };
+
+            await window.go.main.App.SaveDefaultUser(userData, pass, updatePass);
+            resetUserForm();
+            loadDefaultUsers();
+        }
+
+    </script>
+</body>
+</html>
