@@ -33,6 +33,21 @@ O **rdpman** é um gerenciador de conexões RDP (*Remote Desktop Protocol*) comp
 2. **Go 1.22** ou superior ([Download](https://go.dev/dl/))
 3. **Wails CLI** instalado.
 
+### 1. Clonar o repositório
+```
+git clone https://github.com/danieldamazio/rdpman.git
+cd rdpman
+```
+### 2. Rodar em modo de desenvolvimento
+```
+wails dev
+```
+### 3. Compilar o executável final (.exe)
+```
+wails build
+```
+O arquivo compilado será gerado dentro da pasta build/bin/rdpman.exe.
+
 ---
 
 ## 🔐 Nota de Segurança (DPAPI)
